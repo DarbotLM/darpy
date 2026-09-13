@@ -12,9 +12,12 @@ uv sync --frozen --extra coverage
 uv run --frozen --extra coverage python -c "from darpy.coverage import DARP; print(DARP)"
 ```
 
-Development wheels can be built with `uv build` and added to a consuming project
+Python 3.14 is the supported runtime baseline. Development wheels can be built
+with `uv build --python 3.14` and added to a consuming project
 with uv. Public package publication is a separate release step. The
-`visualization` extra additionally installs pygame. `Dependencies.sh` remains a
+`visualization` extra additionally installs pygame-ce 2.5.8 or newer (the
+`pygame` import) and Matplotlib 3.11.2 or newer. pygame-ce supplies Python 3.14
+wheels, which the previous pygame distribution lacks. `Dependencies.sh` remains a
 Bash compatibility helper and now creates an environment using uv with the
 dependencies declared in `pyproject.toml`.
 
@@ -114,7 +117,7 @@ singleton and obstacle grids, complete/closed paths, four-neighbor MST minimum
 cost and acyclicity, and diagonal connectivity. No historical pickle fixtures
 are loaded: executable pickle serialization is unnecessary for these invariants.
 
-The repaired code was exercised with CPython 3.12, NumPy 2.5.3, Numba 0.67.0,
+The repaired code was exercised with CPython 3.14.7, NumPy 2.5.3, Numba 0.67.0,
 OpenCV headless 5.0.0.93, and Pillow 12.3.0. These observations are not a claim
 that every upstream version or operating system is supported.
 

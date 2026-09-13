@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from enum import Enum
+from enum import StrEnum
 
 from .schemas import _string
 
 
-class CapabilityState(str, Enum):
+class CapabilityState(StrEnum):
     NATIVE = "native"
     SCOPED = "scoped"
     PLANNED = "planned"
@@ -95,6 +95,18 @@ def default_registry() -> CapabilityRegistry:
             CapabilityState.SCOPED,
             "Exact rational polynomial expressions and differentiation",
             ("No full SymPy parity, general solvers, or transcendental algebra",),
+        ),
+        Capability(
+            "plot",
+            CapabilityState.SCOPED,
+            "Native line, scatter, bar, histogram, and deterministic SVG export",
+            ("Single numeric linear Axes; no Matplotlib Artist, interactive, raster, or full API parity",),
+        ),
+        Capability(
+            "matplotlib-parity",
+            CapabilityState.PLANNED,
+            "Tracked target for Matplotlib public feature, behavior, and rendering parity",
+            ("Not implemented or certified; the plot module is a deliberately narrow native SVG subset",),
         ),
         Capability(
             "numpy-parity",

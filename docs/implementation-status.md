@@ -12,6 +12,7 @@ passing subset of tests.
 | Teams | Named local runtimes and explicit per-task outcomes | Distributed leases, coordinator recovery, and durable state |
 | Arrays | Immutable dense primitives with an explicit numerical scope | NumPy dtype/storage/API/ABI semantics and complete public inventory |
 | Symbolic math | Exact rational polynomial operations | SymPy assumptions, domains, solvers, functions, and complete public inventory |
+| Charts | Native line, scatter, bar, histogram, labels, legend, and deterministic SVG | Full Matplotlib Artist/API behavior, layout, text, projections, backends, and rendering parity |
 | Improvement | Fixed-contract evaluation evidence and strict candidate promotion | Skill generation, rollout training, sealed evaluation harness, canary deployment |
 | Coverage | Legacy planner repairs, native input validation, headless integration | Full spatial planner modernization and workload performance baselines |
 | SDK protocols | Separate companion repository with explicit protocol contracts | SDK refactor and integration test gates described in the specification |

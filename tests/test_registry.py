@@ -14,6 +14,8 @@ class RegistryTests(unittest.TestCase):
                 self.assertTrue(item.limitations)
         registry = default_registry()
         self.assertEqual(registry.get("numpy-parity").state, CapabilityState.PLANNED)
+        self.assertEqual(registry.get("matplotlib-parity").state, CapabilityState.PLANNED)
+        self.assertEqual(registry.get("plot").state, CapabilityState.SCOPED)
         self.assertEqual(registry.get("distributed-swarm").state, CapabilityState.PLANNED)
         self.assertEqual(registry.get("runtime").state, CapabilityState.NATIVE)
 
@@ -49,6 +51,7 @@ class RegistryTests(unittest.TestCase):
                 data = json.loads(output.getvalue())
                 if command[0] == "doctor":
                     self.assertFalse(data["full_numpy_parity"])
+                    self.assertFalse(data["full_matplotlib_parity"])
                     self.assertEqual(data["core_external_dependencies"], [])
                 if command[0] == "schema":
                     self.assertEqual(data["title"], "Task")

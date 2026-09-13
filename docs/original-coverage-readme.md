@@ -1,5 +1,12 @@
 # DARP: Divide Areas Algorithm for Optimal Multi-Robot Coverage Path Planning
 
+These research notes come from the [upstream DARP project](https://github.com/alice-st/DARP-Python).
+Obsolete environment requirements and installation instructions have been removed;
+setup and testing now live in the current DARPy guides. DARPy requires Python
+3.14 or newer; use the
+[current coverage guide](legacy-coverage.md) and [development instructions](../README.md#develop-locally).
+The usage commands below use that supported environment.
+
 ## Motivation
 
 This project deals with the path planning problem of a team of mobile robots, in order to cover an area of interest, with prior-defined obstacles.
@@ -24,33 +31,6 @@ After the desired area division is achieved, we use [Spanning Tree Coverage (STC
 </p>
 
 
-## Requirements
-
-This project was created using:
-
-* Python version >= 3.6.14
-* OpenCV version >= 4.5.2.54
-* Pygame version >= 2.0.1
-* Scipy version >= 1.7.1
-* nose == 1.3.7 
-* scikit-learn
-
-## Installation and Running
-
-#### To install the application, use:
-```
-git clone https://github.com/alice-st/DARP-Python.git
-cd DARP
-./Dependencies.sh DARP
-source DARP/bin/activate
-```
-
-#### To run the application, use:
-
-```
-python3 multiRobotPathPlanner.py
-```
-
 ## Usage
 
 By default, without defining any parameters, the *multiRobotPathPlanner* is going to run for the following setup:
@@ -64,7 +44,7 @@ To define specific parameters please use the instructions below:
 
 #### To modify the Grid Dimensions, use:
 ```
-python3 multiRobotPathPlanner.py -grid x y
+uv run --frozen --extra coverage python multiRobotPathPlanner.py -grid x y
 
 ```
 where x, y are the desired rows and columns of the Grid respectively (default: 10, 10).
@@ -72,7 +52,7 @@ where x, y are the desired rows and columns of the Grid respectively (default: 1
 #### To modify the number of Robots and their Initial Positions, use:
 
 ```
-python3 multiRobotPathPlanner.py -in_pos a b c
+uv run --frozen --extra coverage python multiRobotPathPlanner.py -in_pos a b c
 
 ```
 where a, b, c, are the cells' numbers in the Grid (default: 0, 3, 9) (row=0,column=0 --> cell=0, row=0,column=1 --> cell=1 etc.)
@@ -81,7 +61,7 @@ where a, b, c, are the cells' numbers in the Grid (default: 0, 3, 9) (row=0,colu
 
 
 ```
-python3 multiRobotPathPlanner.py -nep -portions p_a p_b p_c
+uv run --frozen --extra coverage python multiRobotPathPlanner.py -nep -portions p_a p_b p_c
 
 ```
 
@@ -93,7 +73,7 @@ If -nep is activated (set to True), the algorithm runs for not equal territories
 #### To use different positions for the obstacles in the Grid, use:
 
 ```
-python3 multiRobotPathPlanner.py -obs_pos o1 o2 o3
+uv run --frozen --extra coverage python multiRobotPathPlanner.py -obs_pos o1 o2 o3
 ```
 
 where o1 o2 and o3 are the positions of the obstacles in the Grid. Obstacle positions should not overlap with Robots' initial positions. (default: 5, 6, 7) (row=0,column=0 --> cell=0, row=0,column=1 --> cell=1 etc.)
@@ -101,20 +81,14 @@ where o1 o2 and o3 are the positions of the obstacles in the Grid. Obstacle posi
 #### To visualize the results, use:
 
 ```
-python3 multiRobotPathPlanner.py -vis
+uv run --frozen --extra visualization python multiRobotPathPlanner.py -vis
 ```
 
-
-#### To run the Unittests use:
-
-```
-nosetests --nocapture mainUnitTest.py
-```
 
 #### Demo example:
  
  ```
-python3 multiRobotPathPlanner.py -vis -nep -obs_pos 10 11 12 21 22 23 33 34 35 45 46 47 57 -in_pos 0 99 32 -portions 0.7 0.2 0.1
+uv run --frozen --extra visualization python multiRobotPathPlanner.py -vis -nep -obs_pos 10 11 12 21 22 23 33 34 35 45 46 47 57 -in_pos 0 99 32 -portions 0.7 0.2 0.1
 ```
 
 ##  Example execution

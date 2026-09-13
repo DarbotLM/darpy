@@ -12,15 +12,16 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python: ['3.12', '3.13']
+        python: ['3.14']
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           python-version: ${{ matrix.python }}
-      - run: uv sync --frozen --extra coverage
-      - run: uv run --frozen pytest
-      - run: uv run --frozen ruff check src/darpy tests
-      - run: uv run --frozen pyright
-      - run: uv build
+      - run: uv sync --frozen --all-extras
+      - run: uv run --frozen --all-extras python -c "import numpy, numba, cv2, PIL, pygame, matplotlib"
+      - run: uv run --frozen --all-extras pytest
+      - run: uv run --frozen --all-extras ruff check src/darpy tests
+      - run: uv run --frozen --all-extras pyright
+      - run: uv build --python 3.14

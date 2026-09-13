@@ -13,5 +13,5 @@ if ! command -v uv >/dev/null 2>&1; then
 fi
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-uv venv "$1"
+uv venv --python 3.14 "$1"
 uv pip install --python "$1/bin/python" -e "${project_dir}[coverage,visualization]"

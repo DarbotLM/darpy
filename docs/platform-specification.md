@@ -2,7 +2,7 @@
 
 Distributed Architecture Reasoning and Planning
 
-Version 0.2 | 13 September 2026 | Architecture and implementation specification
+Version 0.3 | 13 September 2026 | Architecture and implementation specification
 
 Prepared for Daryl Yourk and DarbotLabs engineering
 
@@ -10,7 +10,7 @@ Prepared for Daryl Yourk and DarbotLabs engineering
 
 DARPy will be the common Python platform for DarbotLabs. It will provide the computational primitives, schemas, execution services, agents, planning algorithms, and improvement workflows that projects can reuse instead of rebuilding their own foundations. A developer should be able to use one numerical function, embed a software engineering agent, run an agent team, or operate a distributed swarm through the same versioned platform contracts.
 
-The platform will grow through independently installable capability packages under a consistent darpy import namespace. Its public interface will remain stable as implementations move from external adapters to DARPy-maintained native components. Full feature, behavior, and functionality parity with specified NumPy and SymPy releases is a long-term product requirement. Early releases will publish explicit coverage and dependency status rather than claim that a small compatible subset is complete.
+The platform will grow through independently installable capability packages under a consistent darpy import namespace. Its public interface will remain stable as implementations move from external adapters to DARPy-maintained native components. Full feature, behavior, and functionality parity with specified NumPy, SymPy, and Matplotlib releases is a long-term product requirement. Early releases will publish explicit coverage and dependency status rather than claim that a small compatible subset is complete. Both DARPy and the Darbot Python SDK require Python 3.14 or newer, with Python 3.14 as the verified development and release baseline.
 
 Efficiency means measured improvement in useful work per unit of time, memory, energy, and inference cost while preserving the required result. The architecture therefore separates exact computation, approximate ML computation, language-agent behavior, and release evaluation. Improvements to one layer cannot silently weaken another layer's correctness contract.
 
@@ -56,6 +56,8 @@ The words MUST, SHOULD, and MAY identify mandatory requirements, preferred defau
 | DP 015 | New package families can join without expanding the base import | Capability onboarding conformance |
 | DP 016 | Agent Client Protocol and Microsoft Activity Protocol are supported through explicit SDK adapters | Negotiation, session, cancellation, permission, payload, and turn tests |
 | DP 017 | The SDK fork becomes the Darbot Python SDK throughout | Package, import, CLI, documentation, example, and wheel audits |
+| DP 018 | Both repositories use Python 3.14 throughout their owned runtime and tooling configurations | Metadata, source behavior, dependency resolution, and Windows/Linux CI |
+| DP 019 | Matplotlib parity covers the complete pinned public and rendering surfaces | API inventory, Artist and geometry contracts, backends, image and interaction tests |
 
 These requirements govern the entire program. Milestones restrict when capabilities are delivered, not whether they remain in the final scope. Unsupported cases MUST produce a typed capability error or an explicitly enabled adapter fallback. They MUST NOT return approximate results disguised as compatible results.
 
@@ -158,7 +160,7 @@ Deterministic replay means reconstructing decisions and state from recorded inpu
 
 ## 7 Compatibility and dependency ownership
 
-The initial proposed compatibility profiles are numpy 2.3.5 and sympy 1.14.0, with exact wheel hashes and supported Python versions recorded when the conformance environment is built. These are fixed initial targets, not claims about the newest available release. Each later target revision creates a new profile, an upstream delta inventory, and a migration report. Public reference documentation defines the breadth of each profile. [S2, S3]
+The initial compatibility profiles target numpy 2.5.3, sympy 1.14.0, and matplotlib 3.11.2 on Python 3.14. These were the stable package releases checked on 13 September 2026; exact reference wheel hashes are recorded when each conformance environment is built. Matplotlib 3.11.2 is a package version, not a Python runtime version. Profiles remain fixed after admission rather than following a moving latest release. Each later target revision creates a new profile, an upstream delta inventory, and a migration report. Public reference documentation defines each profile's breadth. [S2, S3, S29, S33, S34]
 
 Compatibility is reported on six dimensions: import and API surface, value and type semantics, mutation and memory behavior, errors and warnings, ecosystem protocols, and native extension compatibility. Performance is reported independently. A result can be behaviorally compatible but slower, or faster but ineligible for compatibility because it changes precision or ownership.
 
@@ -268,11 +270,12 @@ The registry distinguishes external runtime dependencies, build dependencies, te
 | --- | --- | --- | --- |
 | NumPy | array and numeric | Full pinned parity program | N1 through N4 |
 | SymPy and mpmath | symbolic and precision | Full symbolic and precision program | S1 through S3 |
+| Matplotlib | plot and visualization | Full pinned public, behavior, and rendering parity program | V1 through V5 |
 | SciPy | numeric and scientific | Used sparse, distance, optimize and signal APIs | Family-specific numerical tests |
 | scikit-learn | ml.classical | Preprocessing, metrics, estimators and pipelines in use | Fit and predict behavior profile |
 | OpenCV | vision and image | Connected components and distance transforms first | Pixel and geometry fixtures |
 | Pillow | image and io | Image metadata, transforms and selected codecs | Codec and color fidelity suite |
-| Pygame | visualization and interaction | Coverage rendering and event handling | Interactive behavior tests |
+| pygame import API through pygame-ce | visualization and interaction | Coverage rendering and event handling on Python 3.14 | Interactive behavior tests |
 | Numba | kernels and compile | Replace known hot loops with native kernels | Semantics plus compile/runtime costs |
 | NetworkX | graph | Typed graphs and algorithms required by DARPy | Graph invariant suite |
 | pandas and Arrow | data | Columnar tables, joins and interchange as demanded | Null, dtype and ordering parity |
@@ -282,11 +285,37 @@ The registry distinguishes external runtime dependencies, build dependencies, te
 | nose and parameterized | development tooling | Migrate existing tests to maintained tooling | Equivalent assertions and fixtures |
 | Jupyter | notebook integration | Protocol adapters and examples | Notebook execution contract |
 
-The other families are candidate workstreams, not blanket claims of complete parity or a mandate to rewrite every project immediately. Each admitted family MUST receive a pinned reference version, complete selected scope, observable semantics, native boundary, and exit criteria. NumPy and SymPy retain the complete-library targets specifically required by this specification.
+The other families are candidate workstreams, not blanket claims of complete parity or a mandate to rewrite every project immediately. Each admitted family MUST receive a pinned reference version, complete selected scope, observable semantics, native boundary, and exit criteria. NumPy, SymPy, and Matplotlib retain the complete-library targets specifically required by this specification.
 
 Priority is determined by measured call frequency, maintenance pain, architectural reuse, and achievable dependency removal relative to implementation and verification cost. A small native connected-components implementation that removes a large dependency from the coverage solver may be delivered before a rarely used special function. Optimized external linear algebra may remain in a capability profile while native equivalents are developed and measured.
 
 Native ownership requires ongoing patching, packaging, compatibility, and support responsibilities. Imported code preserves origin and notices. The repository lineage and missing or ambiguous license metadata must be resolved before redistributing inherited components as a new platform package; this is a concrete release dependency, not a reason to delay specification or independent implementation.
+
+### 10a Native plotting and Matplotlib parity
+
+DP 019 establishes full Matplotlib 3.11.2 parity as a separate engineering program. The current darpy.plot implementation is a useful native starting point: Figure, one numeric linear Axes, line and scatter series, vertical bars, histograms, labels, explicit limits, legends, and deterministic SVG export. It imports only Python's standard library. This does not establish Matplotlib compatibility: immutable native Series handles are not Matplotlib Artist objects, histogram returns contain native tuples, and PNG/PDF output, pyplot global state, interactive backends, and advanced plotting remain outside the current contract. The repository plotting scope document is the authoritative implemented API description.
+
+The complete public inventory MUST cover Figure and Axes methods; pyplot state and lifecycle; Artist identity, mutation, callbacks, and inspection; paths, patches, collections, transforms, and clipping; scales, locators, formatters, units, and dates; colors, normalization, color maps, and color bars; annotations, fonts, math text, and text measurement; layout and multi-Axes composition; images and contour fields; projections, polar and three-dimensional plots; widgets, events, animation, and supported toolkits; and rendering backends and export metadata. Public return types and observable state are requirements alongside the resulting picture. Deprecations and documented aliases remain in the pinned inventory rather than disappearing from the coverage denominator. [S30]
+
+| Wave | Delivery scope | Required evidence |
+| --- | --- | --- |
+| V1 | Native single-Axes SVG line, scatter, bar, histogram, and labels | Data and geometry tests; bin-edge semantics; XML escaping; deterministic output; no external runtime imports |
+| V2 | Compatible Artist state, grids, scales, ticks, units, colors, annotations, and styles | Public API and mutation tests; transforms, autoscaling, and layout comparisons |
+| V3 | Text and font engine, math text, vector and raster backends | Font provenance; clipping and text metrics; pinned image and export comparisons |
+| V4 | Events, widgets, interactive hosts, animation, projections, and 3D | Hit testing; event sequences; frame output; host lifecycle and platform tests |
+| V5 | Complete pinned public inventory and all advertised backend profiles | No uncovered required entries; downstream examples; native-only dependency and full platform gates |
+
+V1 names the initial native plotting scope, not a smaller definition of full Matplotlib parity. Later waves add compatible APIs without silently changing the native contract. A future darpy.compat.matplotlib facade MUST preserve the pinned observable behavior and return types; darpy.plot MAY retain a distinct, simpler API. Python-level compatibility, import replacement, and downstream backend/plugin compatibility are separately advertised profiles.
+
+Behavioral conformance includes autoscaling, empty and constant data, explicit and reversed limits, margins, clipping, draw order, style precedence, categorical and unit conversion, masked values, nonfinite inputs, and documented errors. Current V1 accepts finite numeric inputs and rejects unsupported or unrepresentable geometry explicitly. Full histogram work additionally covers weights, density, cumulative and stacked forms, bin strategies, normalization, orientation, return objects, and final-bin inclusivity. The current supported histogram forms compare their counts and edges with the reference API. Exact adjacent floating-point bin edges must remain authoritative rather than being reconstructed from a rounded midpoint.
+
+Verification proceeds from data and public Artist state, through transformed geometry and layout, to exported pixels or vectors. A similar-looking picture cannot establish API correctness. Reference tests pin Python, Matplotlib, backend, fonts, font files and licenses, DPI, locale, and rendering configuration. SVG comparisons may normalize incidental generated identifiers while preserving paths, transforms, styles, clipping, and text. Raster thresholds are declared before examining candidate output and justified by the backend's numerical variation; broad image tolerances must not conceal missing labels or displaced geometry. Interactive tests verify event order and cleanup independently of static images. [S31, S32]
+
+Native SVG serialization MUST escape caller text and restrict supported style inputs. V1 emits no scripts or external resources. Iterables are copied into owned immutable data, and series do not retain mutable caller buffers. Its current memory use and output size are proportional to retained points and series; callers supply finite, terminating iterables and impose their own workload limits. This is not a resource-isolated renderer. Later hosted rendering MUST enforce input, memory, execution-time, and output budgets. Downsampling and approximate rendering require explicit opt-in with recorded error bounds; they cannot silently alter a compatibility profile.
+
+Deterministic SVG means identical supported inputs produce identical serialized output. It does not promise identical font rasterization across viewers. Native text shaping, embedded fonts, precise layout, and portable pixel output require V3 evidence. Dependency reports separately identify optional Matplotlib as a legacy visualization backend or test oracle; importing the native plot module must not load it, NumPy, a GUI framework, or a network service.
+
+Graph layout and architecture analysis remain separate algorithm capabilities. Drawing nodes, curves, or bars does not by itself implement graph algorithms, causal reasoning, or architecture validation. Shared chart primitives may visualize those results after their own correctness contracts are satisfied.
 
 ## 11 Efficient compute and machine learning
 
@@ -493,7 +522,11 @@ The platform reports public-surface coverage, behavioral-case coverage, native i
 
 Source organization will use a monorepo with packages for the base SDK and optional capabilities, native crates or libraries, schemas, compatibility inventories, tests, benchmarks, examples, documentation, and release tooling. Shared files have explicit owners. Public APIs use type annotations and documented error contracts. Native boundaries expose ownership, alignment, lifetime, and thread rules.
 
-The initial supported runtime matrix is CPython 3.12 and 3.13 on Windows x64 and Linux x64. Linux ARM64 is a first-class worker target for the existing distributed infrastructure. Windows ARM64 and macOS become supported when equivalent build and verification coverage is available. Accelerator support is published by backend and device; CPU installation must work without an accelerator SDK.
+The supported baseline is CPython 3.14 on Windows x64 and Linux x64. Both repositories and every owned workspace package require Python 3.14 or newer; interpreter pins, CI jobs, lint and type-check targets, generated models, examples, and development instructions use 3.14. Linux ARM64, Windows ARM64, and macOS become supported when equivalent build and verification coverage exists. Accelerator support is published by backend and device; CPU installation must work without an accelerator SDK.
+
+The migration MUST verify runtime behavior, not merely replace version strings. Native deferred annotations, generic parameter identity, lazy type aliases, TypedDict interoperability, cancellation, subprocess cleanup, and generated schema behavior require focused checks. Compatibility branches for unsupported older interpreters are removed. A retained typing extension must serve an active API or interoperability requirement, with evidence; its presence alone does not imply reliance on an obsolete Python runtime. Free-threaded builds, subinterpreters, and JIT configurations are separate profiles and are not implied by ordinary CPython 3.14 testing. [S35]
+
+Locked and lowest supported direct dependencies are tested on Python 3.14. Binary integrations require viable wheels for each advertised platform. If an old dependency cannot support the baseline, the project upgrades it, adopts a maintained compatible replacement, or removes that integration; it does not fall back to an older interpreter. The current coverage visualization extra uses pygame-ce for the pygame import API and Matplotlib 3.11.2. Native SVG charts remain independent of those optional packages. Supporting older Python in an external package's own metadata is acceptable when its selected release works and is verified on Python 3.14; DARPy's owned packages retain the new minimum.
 
 Binary wheels use tested build toolchains and include the native dependency manifest. Users should not need a compiler for supported wheel combinations. A pure-Python semantic reference MAY be available for development and unsupported platforms, with its performance status explicit. Native extension ABI choices, including limited-API feasibility, require prototype validation rather than an assumed universal wheel.
 
@@ -528,7 +561,7 @@ These examples describe target interfaces and are not commands available in the 
 ~~~python
 import darpy as dp
 
-with dp.execution(mode="native_only", profile="numpy-2.3.5"):
+with dp.execution(mode="native_only", profile="numpy-2.5.3"):
     x = dp.array.asarray([1.0, 2.0, 3.0], dtype="float64")
     result = dp.array.sum(x)
 
@@ -599,7 +632,7 @@ Schema conformance tests include unknown fields, missing mandatory fields, inval
 
 ## 23 Delivery roadmap and dependencies
 
-The program uses release gates rather than a promise that a mature scientific stack can be recreated in a short sprint. The first 90 days are a proposed sequencing window for a staffed implementation effort; scope is adjusted after inventory and baseline measurement. Complete NumPy and SymPy native parity remains a sustained workstream beyond the initial platform release.
+The program uses release gates rather than a promise that a mature scientific stack can be recreated in a short sprint. The first 90 days are a proposed sequencing window for a staffed implementation effort; scope is adjusted after inventory and baseline measurement. Complete NumPy, SymPy, and Matplotlib native parity remains a sustained workstream beyond the initial platform release.
 
 | Gate | Prerequisite | Deliverable | Acceptance |
 | --- | --- | --- | --- |
@@ -629,7 +662,7 @@ Workstreams require ownership of runtime and packaging, numerical semantics and 
 | P0 | Replace global seeds with explicit generators | Independent runs do not alter caller RNG |
 | P0 | Add coverage, connectivity and path invariants | Small exhaustive cases and randomized grids pass |
 | P0 | Publish schema and capability inventory format | Round-trip fixtures and migration test pass |
-| P0 | Establish pinned NumPy and SymPy oracle environments | Repeatable reference outputs available |
+| P0 | Establish pinned NumPy, SymPy, and Matplotlib oracle environments | Repeatable reference outputs available |
 | P1 | Extract graph primitives and native connectivity | Coverage path executes without OpenCV dependency |
 | P1 | Prototype native arrays and buffer ownership | View, copy, alias and dtype tests pass |
 | P1 | Prototype exact expressions and assumptions | Domain-sensitive algebra tests pass |
@@ -664,7 +697,7 @@ The first platform release MUST demonstrate a clean CPU-only installation on Win
 
 The first distributed release MUST demonstrate worker loss, duplicate delivery, stale-worker return, coordinator restart, cancellation, and conflicting edits. The accepted artifacts and task revisions must remain consistent in every case. The first improvement release MUST demonstrate a candidate that passes, a candidate that is rejected, an unchanged incumbent after rejection, and successful rollback from a canary regression.
 
-Full NumPy and SymPy parity releases require their complete pinned public inventories to be conformant, all required platform combinations to pass, native_only execution to exclude the replaced runtime dependencies, and all separately advertised import or binary compatibility profiles to pass. An implementation may ship earlier useful releases under narrower names; it cannot use an earlier milestone as evidence that the full parity objective is complete.
+Full NumPy, SymPy, and Matplotlib parity releases require their complete pinned public inventories to be conformant, all required platform combinations to pass, native_only execution to exclude the replaced runtime dependencies, and all separately advertised import, binary, rendering, or interactive compatibility profiles to pass. An implementation may ship earlier useful releases under narrower names; it cannot use an earlier milestone as evidence that the full parity objective is complete.
 
 ## 27 Reference sources
 
@@ -672,25 +705,25 @@ Sources were inspected on 13 September 2026. They establish upstream behavior an
 
 [S1] DarbotLM DARPy repository baseline and source files at commit 3dc06ee15c117c95eb642eb289b1c142fe078ac7. https://github.com/DarbotLM/darpy/tree/3dc06ee15c117c95eb642eb289b1c142fe078ac7
 
-[S2] NumPy 2.3 reference and public module inventory. https://numpy.org/doc/2.3/reference/index.html
+[S2] NumPy 2.5 reference and public module inventory. https://numpy.org/doc/stable/reference/index.html
 
 [S3] SymPy 1.14.0 API reference. https://docs.sympy.org/latest/reference/index.html
 
-[S4] NumPy C API reference. https://numpy.org/doc/2.3/reference/c-api/index.html
+[S4] NumPy C API reference. https://numpy.org/doc/stable/reference/c-api/index.html
 
-[S5] NumPy ndarray storage and object behavior. https://numpy.org/doc/2.3/reference/arrays.ndarray.html
+[S5] NumPy ndarray storage and object behavior. https://numpy.org/doc/stable/reference/arrays.ndarray.html
 
-[S6] NumPy copies and views. https://numpy.org/doc/2.3/user/basics.copies.html
+[S6] NumPy copies and views. https://numpy.org/doc/stable/user/basics.copies.html
 
-[S7] NumPy dtype objects. https://numpy.org/doc/2.3/reference/arrays.dtypes.html
+[S7] NumPy dtype objects. https://numpy.org/doc/stable/reference/arrays.dtypes.html
 
-[S8] NumPy dtype promotion. https://numpy.org/doc/2.3/reference/arrays.promotion.html
+[S8] NumPy dtype promotion. https://numpy.org/doc/stable/reference/arrays.promotion.html
 
-[S9] NumPy universal functions. https://numpy.org/doc/2.3/reference/ufuncs.html
+[S9] NumPy universal functions. https://numpy.org/doc/stable/reference/ufuncs.html
 
-[S10] NumPy linear algebra reference. https://numpy.org/doc/2.3/reference/routines.linalg.html
+[S10] NumPy linear algebra reference. https://numpy.org/doc/stable/reference/routines.linalg.html
 
-[S11] NumPy random compatibility policy. https://numpy.org/doc/2.3/reference/random/compatibility.html
+[S11] NumPy random compatibility policy. https://numpy.org/doc/stable/reference/random/compatibility.html
 
 [S12] Python Array API standard. https://data-apis.org/array-api/latest/
 
@@ -725,3 +758,17 @@ Sources were inspected on 13 September 2026. They establish upstream behavior an
 [S27] Microsoft Agents Activity package and release history. https://pypi.org/project/microsoft-agents-activity/
 
 [S28] Microsoft Agents Hosting Core package. https://pypi.org/project/microsoft-agents-hosting-core/
+
+[S29] Matplotlib 3.11.2 package release and Python wheel metadata. https://pypi.org/project/matplotlib/3.11.2/
+
+[S30] Matplotlib public API reference and Artist hierarchy. https://matplotlib.org/stable/api/index.html
+
+[S31] Matplotlib rendering backends. https://matplotlib.org/stable/users/explain/figure/backends.html
+
+[S32] Matplotlib testing API and image comparison facilities. https://matplotlib.org/stable/api/testing_api.html
+
+[S33] NumPy 2.5.3 package release. https://pypi.org/project/numpy/2.5.3/
+
+[S34] SymPy 1.14.0 package release. https://pypi.org/project/sympy/1.14.0/
+
+[S35] Python 3.14 runtime changes, annotations, threading, and interpreters. https://docs.python.org/3.14/whatsnew/3.14.html

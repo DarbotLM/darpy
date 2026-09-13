@@ -32,6 +32,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "execution": "local_cooperative",
             "full_numpy_parity": False,
             "full_sympy_parity": False,
+            "full_matplotlib_parity": False,
         }
     elif args.command == "capabilities":
         result = {"capabilities": [item.to_dict() for item in capabilities()]}

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import uuid4
 
@@ -160,7 +160,7 @@ class ImprovementGate:
                 reason = "strict_improvement" if promoted else "no_strict_improvement"
         return PromotionRecord(
             uuid4().hex,
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
             promoted,
             reason,
             spec,
