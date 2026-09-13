@@ -1,17 +1,9 @@
 import numpy as np
 import sys
-import cv2
-from Visualization import darp_area_visualization
 import time
-import random
-import os
+import math
+from numbers import Integral, Real
 from numba import njit
-
-np.set_printoptions(threshold=sys.maxsize)
-
-random.seed(1)
-os.environ['PYTHONHASHSEED'] = str(1)
-np.random.seed(1)
 
 @njit(fastmath=True)
 def assign(droneNo, rows, cols, GridEnv, MetricMatrix, A):
@@ -40,7 +32,7 @@ def inverse_binary_map_as_uint8(BinaryMap):
     return np.logical_not(BinaryMap).astype(np.uint8)
 
 @njit(fastmath=True)
-def euclidian_distance_points2d(array1: np.array, array2: np.array) -> np.float_:
+def euclidian_distance_points2d(array1: np.ndarray, array2: np.ndarray) -> float:
     # this runs much faster than the (numba) np.linalg.norm and is totally enough for our purpose
     return (
                    ((array1[0] - array2[0]) ** 2) +
@@ -65,8 +57,8 @@ def constructBinaryImages(labels_im, robo_start_point, rows, cols):
 @njit(fastmath=True)
 def CalcConnectedMultiplier(rows, cols, dist1, dist2, CCvariation):
     returnM = np.zeros((rows, cols))
-    MaxV = 0
-    MinV = 2**30
+    MaxV = -np.inf
+    MinV = np.inf
 
     for i in range(rows):
         for j in range(cols):
@@ -75,6 +67,9 @@ def CalcConnectedMultiplier(rows, cols, dist1, dist2, CCvariation):
                 MaxV = returnM[i, j]
             if MinV > returnM[i, j]:
                 MinV = returnM[i, j]
+
+    if MaxV == MinV:
+        return np.ones((rows, cols))
 
     for i in range(rows):
         for j in range(cols):
@@ -87,26 +82,33 @@ class DARP:
     def __init__(self, nx, ny, notEqualPortions, given_initial_positions, given_portions, obstacles_positions,
                  visualization, MaxIter=80000, CCvariation=0.01,
                  randomLevel=0.0001, dcells=2,
-                 importance=False):
+                 importance=False, *, seed=1):
 
-        self.rows = nx
-        self.cols = ny
+        self.rows = self._positive_integer(nx, "nx")
+        self.cols = self._positive_integer(ny, "ny")
+        self.MaxIter = self._positive_integer(MaxIter, "MaxIter")
+        if isinstance(dcells, bool) or not isinstance(dcells, Integral) or dcells < 0:
+            raise ValueError("dcells must be a nonnegative integer")
+        for name, value in (("CCvariation", CCvariation), ("randomLevel", randomLevel)):
+            if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value) or not 0 <= value < 1:
+                raise ValueError(f"{name} must be a finite number in [0, 1)")
+        if seed is not None and (isinstance(seed, bool) or not isinstance(seed, Integral) or not 0 <= seed < 2**32):
+            raise ValueError("seed must be None or an integer in [0, 2**32)")
+        # Preserve the legacy random sequence without changing process-wide state.
+        self._rng = np.random.RandomState(seed)
         self.initial_positions, self.obstacles_positions, self.portions = self.sanity_check(given_initial_positions, given_portions, obstacles_positions, notEqualPortions)
 
         self.visualization = visualization
-        self.MaxIter = MaxIter
         self.CCvariation = CCvariation
         self.randomLevel = randomLevel
         self.dcells = dcells
         self.importance = importance
         self.notEqualPortions = notEqualPortions
-    
-
-        print("\nInitial Conditions Defined:")
-        print("Grid Dimensions:", nx, ny)
-        print("Number of Robots:", len(self.initial_positions))
-        print("Initial Robots' positions", self.initial_positions)
-        print("Portions for each Robot:", self.portions, "\n")
+        try:
+            import cv2
+        except ModuleNotFoundError as error:
+            raise ImportError("Coverage planning requires OpenCV; install darpy[coverage]") from error
+        self._cv2 = cv2
 
         self.droneNo = len(self.initial_positions)
         self.A = np.zeros((self.rows, self.cols))
@@ -120,49 +122,53 @@ class DARP:
         self.color = []
 
         for r in range(self.droneNo):
-            np.random.seed(r)
-            self.color.append(list(np.random.choice(range(256), size=3)))
-        
-        np.random.seed(1)
+            self.color.append(np.random.RandomState(r).choice(256, size=3).tolist())
+
         if self.visualization:
+            from Visualization import darp_area_visualization
+
             self.assignment_matrix_visualization = darp_area_visualization(self.A, self.droneNo, self.color, self.initial_positions)
 
+    @staticmethod
+    def _positive_integer(value, name):
+        if isinstance(value, bool) or not isinstance(value, Integral) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer")
+        return int(value)
+
     def sanity_check(self, given_initial_positions, given_portions, obs_pos, notEqualPortions):
-        initial_positions = []
-        for position in given_initial_positions:
-            if position < 0 or position >= self.rows * self.cols:
-                print("Initial positions should be inside the Grid.")
-                sys.exit(1)
-            initial_positions.append((position // self.cols, position % self.cols))
+        def grid_positions(values, name):
+            try:
+                values = list(values)
+            except TypeError as error:
+                raise ValueError(f"{name} must be an iterable of integer cell indices") from error
+            for value in values:
+                if isinstance(value, bool) or not isinstance(value, Integral) or not 0 <= value < self.rows * self.cols:
+                    raise ValueError(f"{name} must contain integer indices inside the grid")
+            if len(set(values)) != len(values):
+                raise ValueError(f"{name} must not contain duplicates")
+            return [(int(value) // self.cols, int(value) % self.cols) for value in values]
 
-        obstacles_positions = []
-        for obstacle in obs_pos:
-            if obstacle < 0 or obstacle >= self.rows * self.cols:
-                print("Obstacles should be inside the Grid.")
-                sys.exit(2)
-            obstacles_positions.append((obstacle // self.cols, obstacle % self.cols))
-
-        portions = []
+        initial_positions = grid_positions(given_initial_positions, "initial_positions")
+        if not initial_positions:
+            raise ValueError("at least one initial robot position is required")
+        obstacles_positions = grid_positions(obs_pos, "obstacles_positions")
+        if set(initial_positions) & set(obstacles_positions):
+            raise ValueError("initial positions must not overlap obstacles")
         if notEqualPortions:
-            portions = given_portions
+            try:
+                portions = list(given_portions)
+            except TypeError as error:
+                raise ValueError("portions must be an iterable with one fraction per robot") from error
         else:
-            for drone in range(len(initial_positions)):
-                portions.append(1 / len(initial_positions))
+            portions = [1 / len(initial_positions)] * len(initial_positions)
 
         if len(initial_positions) != len(portions):
-            print("Portions should be defined for each drone")
-            sys.exit(3)
-
-        s = sum(portions)
-        if abs(s - 1) >= 0.0001:
-            print("Sum of portions should be equal to 1.")
-            sys.exit(4)
-
-        for position in initial_positions:
-            for obstacle in obstacles_positions:
-                if position[0] == obstacle[0] and position[1] == obstacle[1]:
-                    print("Initial positions should not be on obstacles")
-                    sys.exit(5)
+            raise ValueError("portions must contain one fraction per robot")
+        if any(isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value) or not 0 < value <= 1 for value in portions):
+            raise ValueError("portions must be finite fractions in (0, 1]")
+        portions = [float(value) for value in portions]
+        if abs(math.fsum(portions) - 1) >= 0.0001:
+            raise ValueError("portions must sum to 1 within 0.0001")
 
         return initial_positions, obstacles_positions, portions
           
@@ -172,17 +178,17 @@ class DARP:
         # obstacle tiles value is -2
         for idx, obstacle_pos in enumerate(self.obstacles_positions):
             GridEnv[obstacle_pos[0], obstacle_pos[1]] = -2
+            self.A[obstacle_pos] = self.droneNo
 
         connectivity = np.zeros((self.rows, self.cols))
         
         mask = np.where(GridEnv == -1)
         connectivity[mask[0], mask[1]] = 255
         image = np.uint8(connectivity)
-        num_labels, labels_im = cv2.connectedComponents(image, connectivity=4)
+        num_labels, labels_im = self._cv2.connectedComponents(image, connectivity=4)
 
         if num_labels > 2:
-            print("The environment grid MUST not have unreachable and/or closed shape regions")
-            sys.exit(6)
+            raise ValueError("the non-obstacle grid must be connected by four-neighbor moves")
         
         # initial robot tiles will have their array.index as value
         for idx, robot in enumerate(self.initial_positions):
@@ -194,20 +200,25 @@ class DARP:
     def divideRegions(self):
         success = False
         cancelled = False
-        criterionMatrix = np.zeros((self.rows, self.cols))
         iteration = 0
+        iteration_budget = self.MaxIter
+
+        # Every traversable cell may already be a robot's start cell.
+        if not np.any(self.GridEnv == -1):
+            self.A[self.GridEnv == -2] = self.droneNo
+            self.update_connectivity()
+            self.getBinaryRobotRegions()
+            return True, 0
 
         while self.termThr <= self.dcells and not success and not cancelled:
             downThres = (self.Notiles - self.termThr*(self.droneNo-1))/(self.Notiles*self.droneNo)
             upperThres = (self.Notiles + self.termThr)/(self.Notiles*self.droneNo)
 
-            success = True
-
             # Main optimization loop
 
             iteration=0
 
-            while iteration <= self.MaxIter and not cancelled:
+            while iteration <= iteration_budget and not cancelled:
                 self.A, self.ArrayOfElements = assign(self.droneNo,
                                                       self.rows,
                                                       self.cols,
@@ -223,7 +234,7 @@ class DARP:
                 for r in range(self.droneNo):
                     ConnectedMultiplier = np.ones((self.rows, self.cols))
                     ConnectedRobotRegions[r] = True
-                    num_labels, labels_im = cv2.connectedComponents(self.connectivity[r, :, :], connectivity=4)
+                    num_labels, labels_im = self._cv2.connectedComponents(self.connectivity[r, :, :], connectivity=4)
                     if num_labels > 2:
                         ConnectedRobotRegions[r] = False
                         BinaryRobot, BinaryNonRobot = constructBinaryImages(labels_im, self.initial_positions[r], self.rows, self.cols)
@@ -238,6 +249,10 @@ class DARP:
                         divFairError[r] = upperThres - plainErrors[r]
 
                 if self.IsThisAGoalState(self.termThr, ConnectedRobotRegions):
+                    success = True
+                    break
+
+                if iteration == iteration_budget:
                     break
 
                 TotalNegPerc = 0
@@ -252,6 +267,7 @@ class DARP:
                     correctionMult[r] = 1
 
                 for r in range(self.droneNo):
+                    criterionMatrix = np.ones((self.rows, self.cols))
                     if totalNegPlainErrors != 0:
                         if divFairError[r] < 0:
                             correctionMult[r] = 1 + (plainErrors[r]/totalNegPlainErrors)*(TotalNegPerc/2)
@@ -276,22 +292,22 @@ class DARP:
                     self.assignment_matrix_visualization.placeCells(self.A, iteration_number=iteration)
                     time.sleep(0.2)
 
-            if iteration >= self.MaxIter:
-                self.MaxIter = self.MaxIter/2
-                success = False
+            if not success:
+                iteration_budget = max(1, iteration_budget // 2)
                 self.termThr += 1
 
         self.getBinaryRobotRegions()
         return success, iteration
 
     def getBinaryRobotRegions(self):
+        self.BinaryRobotRegions.fill(False)
         ind = np.where(self.A < self.droneNo)
         temp = (self.A[ind].astype(int),)+ind
         self.BinaryRobotRegions[temp] = True
 
     def generateRandomMatrix(self):
         RandomMatrix = np.zeros((self.rows, self.cols))
-        RandomMatrix = 2*self.randomLevel*np.random.uniform(0, 1,size=RandomMatrix.shape) + (1 - self.randomLevel)
+        RandomMatrix = 2*self.randomLevel*self._rng.uniform(0, 1,size=RandomMatrix.shape) + (1 - self.randomLevel)
         return RandomMatrix
 
     def FinalUpdateOnMetricMatrix(self, CM, RM, currentOne, CC):
@@ -361,7 +377,7 @@ class DARP:
 
     def calculateCriterionMatrix(self, TilesImportance, MinimumImportance, MaximumImportance, correctionMult, smallerthan_zero,):
         returnCrit = np.zeros((self.rows, self.cols))
-        if self.importance:
+        if self.importance and MaximumImportance != MinimumImportance:
             if smallerthan_zero:
                 returnCrit = (TilesImportance- MinimumImportance)*((correctionMult-1)/(MaximumImportance-MinimumImportance)) + 1
             else:
@@ -372,15 +388,16 @@ class DARP:
         return returnCrit
 
     def NormalizedEuclideanDistanceBinary(self, RobotR, BinaryMap):
-        distRobot = cv2.distanceTransform(inverse_binary_map_as_uint8(BinaryMap), distanceType=2, maskSize=0, dstType=5)
+        distRobot = self._cv2.distanceTransform(inverse_binary_map_as_uint8(BinaryMap), distanceType=2, maskSize=0, dstType=5)
         MaxV = np.max(distRobot)
         MinV = np.min(distRobot)
 
         #Normalization
+        if MaxV == MinV:
+            return np.ones_like(distRobot) if RobotR else np.zeros_like(distRobot)
         if RobotR:
             distRobot = (distRobot - MinV)*(1/(MaxV-MinV)) + 1
         else:
             distRobot = (distRobot - MinV)*(1/(MaxV-MinV))
 
         return distRobot
-

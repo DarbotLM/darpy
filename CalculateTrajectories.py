@@ -1,6 +1,5 @@
 import numpy as np
 from Edges import Edge, Graph
-import sys
 
 
 class CalculateTrajectories():
@@ -34,7 +33,7 @@ class CalculateTrajectories():
                             self.AddToAllEdges(i*2*self.cols+j, (i-1)*2*self.cols+j-1, 1)
                         if i < 2*self.rows-1 and j < 2*self.cols-1 and A[i+1][j+1]:
                             self.AddToAllEdges(i*2*self.cols+j, (i+1)*2*self.cols+j+1, 1)
-                        if i > 2*self.rows-1 and j > 0 and A[i+1][j-1]:
+                        if i < 2*self.rows-1 and j > 0 and A[i+1][j-1]:
                             self.AddToAllEdges(i*2*self.cols+j, (i+1)*2*self.cols+j-1, 1)
                         if i > 0 and j < 2*self.cols-1 and A[i-1][j+1]:
                             self.AddToAllEdges(i*2*self.cols+j, (i-1)*2*self.cols+j+1, 1)
@@ -93,10 +92,8 @@ class CalculateTrajectories():
             if curEdge.src in self.nodes[curEdge.dst]:
                 self.nodes[curEdge.dst].remove(curEdge.src)
 
-        except KeyError:
-            # This is a serious problem
-            print("TreeSet should have contained this element!!")
-            sys.exit(1)
+        except KeyError as error:
+            raise RuntimeError("trajectory graph is missing an edge required by the spanning tree") from error
 
     def CalculatePathsSequence(self, StartingNode):
 
@@ -151,4 +148,3 @@ class CalculateTrajectories():
             previ = int(prevNode/(2*self.cols))
             prevj = prevNode % (2*self.cols)
             self.PathSequence.append((previ, prevj, i, j))
-

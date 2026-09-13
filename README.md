@@ -1,161 +1,104 @@
-# DARP: Divide Areas Algorithm for Optimal Multi-Robot Coverage Path Planning
+# DARPy
 
-## Motivation
+**Distributed Architecture Reasoning and Planning — the DarbotLabs Python platform.**
 
-This project deals with the path planning problem of a team of mobile robots, in order to cover an area of interest, with prior-defined obstacles.
+DARPy is growing from a multi-robot coverage planner into reusable computation,
+task execution, agent teams, and measured improvement. The platform exposes
+`darpy`; its companion [Darbot Python SDK](https://github.com/DarbotLM/darpy-sdk)
+exposes `darpy_sdk` for protocol and client/server integration.
 
-DARP algorithm divides the terrain into a number of equal areas each corresponding to a specific robot, so as to guarantee complete coverage, non-backtracking solution, minimum coverage path, while at the same time does not need any preparatory stage.
+This is a working foundation release with deliberately scoped capabilities.
+Full NumPy, SymPy, and Matplotlib parity, a complete SWE agent, distributed swarms, and
+recursive optimizer training are specified workstreams. They are not claimed
+as implemented by this release.
 
-### But how does this algorithm work?
+| Capability | Current scope |
+| --- | --- |
+| Core contracts | Validated, versioned JSON task, budget, and execution records |
+| Runtime | Injected asynchronous handlers with deadlines, cancellation, and concurrency limits |
+| Agent teams | Named local runtimes, ordered results, explicit failure handling |
+| Scientific primitives | Native immutable arrays and exact rational polynomial expressions |
+| Charts | Native line, scatter, bar, histogram, labels, legends, and deterministic SVG export |
+| Improvement | Evidence-based candidate promotion against a fixed evaluation contract |
+| Robot coverage | Repaired legacy DARP/STC planner, optional numerical dependencies, headless operation |
+| Protocols | MCP, Agent Client Protocol, and Microsoft Activity integration belong to the companion SDK |
 
-In essence, the DARP algorithm follows a cyclic coordinate descent optimization scheme updating each robots’ territory separately but towards achieving the overall multi-robot Coverage Path Planning (mCPP) objectives.
+## Develop locally
 
-<p align="center">
-  <img width="550" height="300" src="images/DARP.png">
-</p>
+Python 3.14 is the supported development and CI baseline. Package metadata
+requires Python 3.14 or newer. From this repository:
 
-
-After the desired area division is achieved, we use [Spanning Tree Coverage (STC) algorithm](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.479.5125&rep=rep1&type=pdf#:~:text=The%20algorithm%2C%20called%20Spanning%20Tree,covering%20every%20point%20precisely%20once.) to produce the optimal path for each robot, in order to achieve full coverage of the area of interest.
-
-
-
-<p align="center">
-  <img width="650" height="400" src="images/STC.png">
-</p>
-
-
-## Requirements
-
-This project was created using:
-
-* Python version >= 3.6.14
-* OpenCV version >= 4.5.2.54
-* Pygame version >= 2.0.1
-* Scipy version >= 1.7.1
-* nose == 1.3.7 
-* scikit-learn
-
-## Installation and Running
-
-#### To install the application, use:
-```
-git clone https://github.com/alice-st/DARP-Python.git
-cd DARP
-./Dependencies.sh DARP
-source DARP/bin/activate
+```bash
+uv python install 3.14
+uv sync --frozen
+uv run --frozen darpy doctor
+uv run --frozen pytest
 ```
 
-#### To run the application, use:
+Enable the legacy robot planner with `uv sync --frozen --extra coverage`.
+Visualization is separately optional: `uv sync --frozen --extra visualization`.
+It includes Matplotlib 3.11.2 or newer and pygame-ce, which provides the
+`pygame` module with Python 3.14 wheels. Keep the selected extra on subsequent
+`uv run` commands, or use `uv run --frozen --all-extras pytest` for the full suite.
+The base package has no third-party runtime requirements and does not load
+numerical libraries, model providers, or network services on import.
 
-```
-python3 multiRobotPathPlanner.py
-```
+## Run a task
 
-## Usage
+```python
+import asyncio
 
-By default, without defining any parameters, the *multiRobotPathPlanner* is going to run for the following setup:
-
-<p align="center">
-  <img width="550" height="550" src="images/default_setup.png">
-</p>
-where the red, green and purple cells denote the initial positions of the 3 robots respectively and the black cells denote the environments obstacles. 
-
-To define specific parameters please use the instructions below:
-
-#### To modify the Grid Dimensions, use:
-```
-python3 multiRobotPathPlanner.py -grid x y
-
-```
-where x, y are the desired rows and columns of the Grid respectively (default: 10, 10).
-
-#### To modify the number of Robots and their Initial Positions, use:
-
-```
-python3 multiRobotPathPlanner.py -in_pos a b c
-
-```
-where a, b, c, are the cells' numbers in the Grid (default: 0, 3, 9) (row=0,column=0 --> cell=0, row=0,column=1 --> cell=1 etc.)
-
-#### To assign different portions to each Robot (not Equal), use:
+from darpy import Runtime, Task
 
 
-```
-python3 multiRobotPathPlanner.py -nep -portions p_a p_b p_c
+async def handler(task: Task) -> str:
+    return f"Completed: {task.prompt}"
 
+
+async def main() -> None:
+    runtime = Runtime(handler, max_concurrency=4)
+    result = await runtime.run(Task("inspect this project", session_id="example"))
+    print(result.text)
+
+
+asyncio.run(main())
 ```
 
-where p_a p_b p_c are the portions assigned to Robots a, b and c respectively. Their sum should be equal to 1. (default: 0.2, 0.3, 0.5)
+A successful execution receipt means the handler completed. Application-specific
+verifiers must establish that its output satisfies the user's goal. Deadlines
+are cooperative: blocking or untrusted workloads need process isolation.
 
-If -nep is activated (set to True), the algorithm runs for not equal territories with 20%, 30% and 50% coverage per robot. Otherwise, the algorithm runs for equal territories with 33,33% coverage per robot. 
+## Generate a native chart
 
+Generate a chart with the dependency-free native API:
 
-#### To use different positions for the obstacles in the Grid, use:
+```python
+from darpy.plot import subplots
 
-```
-python3 multiRobotPathPlanner.py -obs_pos o1 o2 o3
-```
-
-where o1 o2 and o3 are the positions of the obstacles in the Grid. Obstacle positions should not overlap with Robots' initial positions. (default: 5, 6, 7) (row=0,column=0 --> cell=0, row=0,column=1 --> cell=1 etc.)
-
-#### To visualize the results, use:
-
-```
-python3 multiRobotPathPlanner.py -vis
-```
-
-
-#### To run the Unittests use:
-
-```
-nosetests --nocapture mainUnitTest.py
+figure, axes = subplots()
+axes.plot([1, 2, 3], [2, 5, 4], label="Completed tasks")
+axes.set_xlabel("Iteration")
+axes.set_ylabel("Tasks")
+axes.legend()
+figure.savefig("progress.svg")
 ```
 
-#### Demo example:
- 
- ```
-python3 multiRobotPathPlanner.py -vis -nep -obs_pos 10 11 12 21 22 23 33 34 35 45 46 47 57 -in_pos 0 99 32 -portions 0.7 0.2 0.1
-```
+This release supports one numeric, linear Axes per figure. Its immutable series
+and SVG output have an explicit native contract; Matplotlib's full Artist API,
+interactive backends, raster export, and complete behavior remain tracked work.
 
-##  Example execution
+## Documentation
 
-Using a 20x20 Grid area, four robots with initial positions 10, 32, 99 and 250 and Equal portions of the Grid shared between the robots, we obtained the following results:
+- [Full platform specification](docs/platform-specification.md)
+- [Implemented scope and release gates](docs/implementation-status.md)
+- [Runtime, teams, and improvement](docs/core-runtime.md)
+- [Native scientific scope](docs/scientific-scope.md)
+- [Native plotting scope and Matplotlib parity roadmap](docs/plotting-scope.md)
+- [Legacy coverage integration](docs/legacy-coverage.md)
+- [Original coverage research and attribution](docs/original-coverage-readme.md)
+- [Source provenance and publication requirements](NOTICE.md)
 
-### Assignment Matrix
-
-<p align="center">
-  <img width="550" height="550" src="images/DARP.gif">
-</p>
-
-### Final coverage paths for all robots
-
-For each robot path has been utilized the mode that results in the minimum number of turns to completely cover its respective sub-region.
-
-<p align="center">
-  <img width="550" height="550" src="images/all_modes.png">
-</p>
-
-## Extra Material
-
-Paper: [Zenodo](https://zenodo.org/record/2591050#.YTCvBVtRVH6)
-
-Medium: [Medium](https://medium.com/@athanasios.kapoutsis/darp-divide-areas-algorithm-for-optimal-multi-robot-coverage-path-planning-2fed77b990a3)
-
-GitHub repositories: [Java](https://github.com/athakapo/DARP)
-
-GUI demo: [YouTube](https://www.youtube.com/watch?v=LrGfvma41Ak)
-
-ROS integration: [Wiki](http://wiki.ros.org/area_division)
-
-
-## Cite as
-
-```
-@article{kapoutsisdarp,
-  title={DARP: Divide Areas Algorithm for Optimal Multi-Robot Coverage Path Planning},
-  author={Kapoutsis, Athanasios Ch and Chatzichristofis, Savvas A and Kosmatopoulos, Elias B},
-  journal={Journal of Intelligent \& Robotic Systems},
-  pages={1--18},
-  publisher={Springer}
-}
-```
+The specification covers the complete destination, including scientific parity,
+architecture reasoning, SWE agents, distributed recovery, SkillOpt-informed
+improvement, package ownership, and migration across DarbotLabs. Capability
+status and tests determine what can be relied on in the current code.

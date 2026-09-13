@@ -1,15 +1,14 @@
-import pickle
-
 from darp import DARP
 import numpy as np
 from kruskal import Kruskal
 from CalculateTrajectories import CalculateTrajectories
-from Visualization import visualize_paths
 import sys
 import argparse
 from turns import turns
-from PIL import Image
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 def get_area_map(path, area=0, obs=-1):
     """
@@ -19,12 +18,13 @@ def get_area_map(path, area=0, obs=-1):
     :param obs: obstacle tiles value; standard is -1
     :return: an array of area(0) and obstacle(-1) tiles
     """
-    le_map = np.array(Image.open(path))
-    ma = np.array(le_map).mean(axis=2) != 0
-    le_map = np.int8(np.zeros(ma.shape))
-    le_map[ma] = area
-    le_map[~ma] = obs
-    return le_map
+    try:
+        from PIL import Image
+    except ModuleNotFoundError as error:
+        raise ImportError("Image maps require Pillow; install darpy[coverage]") from error
+    with Image.open(path) as image:
+        traversable = np.any(np.asarray(image.convert("RGB")) != 0, axis=2)
+    return np.where(traversable, area, obs)
 
 def get_area_indices(area, value, inv=False, obstacle=-1):
     """
@@ -36,41 +36,38 @@ def get_area_indices(area, value, inv=False, obstacle=-1):
     :param obstacle: defines obstacle tiles
     :return:
     """
-    try:
-        value = int(value)
-        if inv:
-            return np.concatenate([np.where((area != value))]).T
-        return np.concatenate([np.where((area == value))]).T
-    except:
-        mask = area == value[0]
-        if inv:
-            mask = area != value[0]
-        for v in value[1:]:
-            if inv:
-                mask &= area != v
-            else:
-                mask |= area == v
+    area = np.asarray(area)
+    if area.ndim != 2:
+        raise ValueError("area must be a two-dimensional array")
+    values = np.asarray(value)
+    mask = np.isin(area, values)
+    if inv:
+        mask = ~mask
+    # Preserve the legacy iterable-value helper's obstacle exclusion.
+    if values.ndim:
         mask &= area != obstacle
-        return np.concatenate([np.where(mask)]).T
+    return np.argwhere(mask)
 
 class MultiRobotPathPlanner(DARP):
     def __init__(self, nx, ny, notEqualPortions, initial_positions, portions,
                  obs_pos, visualization, MaxIter=80000, CCvariation=0.01,
-                 randomLevel=0.0001, dcells=2, importance=False):
+                 randomLevel=0.0001, dcells=2, importance=False, *, seed=1):
 
-        start_time = time.time()
+        start_time = time.perf_counter()
+        self.best_case = None
+        self.mode_to_drone_turns = []
         # Initialize DARP
         self.darp_instance = DARP(nx, ny, notEqualPortions, initial_positions, portions, obs_pos, visualization,
                                   MaxIter=MaxIter, CCvariation=CCvariation,
                                   randomLevel=randomLevel, dcells=dcells,
-                                  importance=importance)
+                                  importance=importance, seed=seed)
 
         # Divide areas based on robots initial positions
         self.DARP_success , self.iterations = self.darp_instance.divideRegions()
 
         # Check if solution was found
         if not self.DARP_success:
-            print("DARP did not manage to find a solution for the given configuration!")
+            logger.info("DARP did not find a solution for the given configuration")
         else:
             # Iterate for 4 different ways to join edges in MST
             self.mode_to_drone_turns = []
@@ -185,18 +182,16 @@ class MultiRobotPathPlanner(DARP):
             
             #visualize best case
             if self.darp_instance.visualization:
+                from Visualization import visualize_paths
+
                 image = visualize_paths(self.best_case.paths, subCellsAssignment_dict[self.min_mode],
                                         self.darp_instance.droneNo, self.darp_instance.color)
                 image.visualize_paths("Combined Modes")
 
-            self.execution_time = time.time() - start_time
-            
-            print(f'\nResults:')
-            print(f'Number of cells per robot: {best_case_num_paths}')
-            print(f'Minimum number of cells in robots paths: {min(best_case_num_paths)}')
-            print(f'Maximum number of cells in robots paths: {max(best_case_num_paths)}')
-            print(f'Average number of cells in robots paths: {np.mean(np.array(best_case_num_paths))}')
-            print(f'\nTurns Analysis: {self.best_case}')
+            logger.info("Number of cells per robot: %s", best_case_num_paths)
+            logger.info("Turns analysis: %s", self.best_case)
+
+        self.execution_time = time.perf_counter() - start_time
             
     def CalcRealBinaryReg(self, BinaryRobotRegion, rows, cols):
         temp = np.zeros((2*rows, 2*cols))
@@ -222,6 +217,7 @@ class MultiRobotPathPlanner(DARP):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     argparser = argparse.ArgumentParser(
         description=__doc__)
     argparser.add_argument(
