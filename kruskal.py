@@ -1,11 +1,15 @@
 from Edges import Edge, Graph
-import sys
+from numbers import Integral
+
+import numpy as np
 
 
 class Kruskal(object):
     def __init__(self, rows, cols):
-        self.rows = rows
-        self.cols = cols
+        if any(isinstance(value, bool) or not isinstance(value, Integral) or value <= 0 for value in (rows, cols)):
+            raise ValueError("rows and cols must be positive integers")
+        self.rows = int(rows)
+        self.cols = int(cols)
         self.allEdges = []
         self.MAX_NODES = self.rows*self.cols
         self.nodes = {}
@@ -14,6 +18,14 @@ class Kruskal(object):
         self.mst = []
 
     def initializeGraph(self, A, connect4, mode):
+        A = np.asarray(A)
+        if A.shape != (self.rows, self.cols):
+            raise ValueError("region shape must match rows and cols")
+        if isinstance(mode, bool) or not isinstance(mode, Integral) or mode not in range(4):
+            raise ValueError("mode must be an integer from 0 through 3")
+        self.allEdges = []
+        self.nodes = {node: None for node in range(self.MAX_NODES)}
+        self.mst = []
         cost1 = 1
         cost2 = 1
 
@@ -40,13 +52,13 @@ class Kruskal(object):
 
                     if not connect4:
                         if (i > 0 and j > 0 and A[i-1][j-1]):
-                            AddToAllEdges(i*self.cols+j, (i-1)*self.cols+j-1, 1)
-                        if (i < rows-1 and j < self.cols-1 and A[i+1][j+1]):
-                            AddToAllEdges(i*self.cols+j, (i+1)*self.cols+j+1, 1)
-                        if (i > rows-1 and j > 0 and A[i+1][j-1]):
-                            AddToAllEdges(i*self.cols+j, (i+1)*self.cols+j-1, 1)
+                            self.AddToAllEdges(i*self.cols+j, (i-1)*self.cols+j-1, 1)
+                        if (i < self.rows-1 and j < self.cols-1 and A[i+1][j+1]):
+                            self.AddToAllEdges(i*self.cols+j, (i+1)*self.cols+j+1, 1)
+                        if (i < self.rows-1 and j > 0 and A[i+1][j-1]):
+                            self.AddToAllEdges(i*self.cols+j, (i+1)*self.cols+j-1, 1)
                         if (i > 0 and j < self.cols-1 and A[i-1][j+1]):
-                            AddToAllEdges(i*self.cols+j, (i-1)*self.cols+j+1, 1)
+                            self.AddToAllEdges(i*self.cols+j, (i-1)*self.cols+j+1, 1)
 
     def AddToAllEdges(self, _from: int, to: int, cost):
         self.allEdges.insert(0, Edge(_from, to, cost))

@@ -1,0 +1,71 @@
+[project]
+name = "darpy"
+version = "0.1.0"
+description = "DarbotLabs platform for distributed architecture reasoning and planning"
+readme = "README.md"
+requires-python = ">=3.14"
+authors = [{ name = "DarbotLabs" }]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = []
+
+[project.optional-dependencies]
+coverage = ["numpy>=2.5.3", "numba>=0.67.0", "opencv-python-headless>=5.0.0.93", "Pillow>=12.3.0"]
+visualization = [
+    "numpy>=2.5.3",
+    "numba>=0.67.0",
+    "opencv-python-headless>=5.0.0.93",
+    "Pillow>=12.3.0",
+    "pygame-ce>=2.5.8",
+    "matplotlib>=3.11.2",
+]
+
+[project.scripts]
+darpy = "darpy.cli:main"
+
+[project.urls]
+Repository = "https://github.com/DarbotLM/darpy"
+Issues = "https://github.com/DarbotLM/darpy/issues"
+SDK = "https://github.com/DarbotLM/darpy-sdk"
+
+[dependency-groups]
+dev = ["pytest>=8.4", "anyio>=4.10", "ruff>=0.14", "pyright>=1.1.405", "coverage>=7.10"]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/darpy"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"darp.py" = "darp.py"
+"kruskal.py" = "kruskal.py"
+"Edges.py" = "Edges.py"
+"CalculateTrajectories.py" = "CalculateTrajectories.py"
+"multiRobotPathPlanner.py" = "multiRobotPathPlanner.py"
+"Visualization.py" = "Visualization.py"
+"turns.py" = "turns.py"
+"NOTICE.md" = "darpy/NOTICE.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 120
+target-version = "py314"
+include = ["src/darpy/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pyright]
+typeCheckingMode = "basic"
+pythonVersion = "3.14"
+include = ["src/darpy"]
+venvPath = "."
+venv = ".venv"
